@@ -93,7 +93,7 @@ window.addEventListener('load', () => {
 		preview_image.addEventListener('click', (evt) => {
 			if (!preview_image.src) return;
 			evt.stopPropagation();
-			window.open(preview_image.src, '_blank');
+			open_preview_in_new_tab(preview_image.src);
 		});
 	}
 
@@ -230,6 +230,15 @@ function clear_preview_exif() {
 function set_preview_exif_loading() {
 	if (!preview_exif) return;
 	preview_exif.textContent = 'EXIF-Daten werden geladen...';
+}
+
+function open_preview_in_new_tab(src) {
+	if (!src) return;
+	const link = document.createElement('a');
+	link.href = src;
+	link.target = '_blank';
+	link.rel = 'noopener';
+	link.click();
 }
 
 function normalize_make(make) {
