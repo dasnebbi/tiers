@@ -218,7 +218,7 @@ function set_preview_image(src) {
 
 function clear_preview_for_dragged_image() {
 	if (dragged_image && preview_image && preview_image.src === dragged_image.src) {
-		set_preview_image(null);
+		set_preview_image(next_pool_image_src());
 	}
 }
 
@@ -230,6 +230,15 @@ function clear_preview_exif() {
 function set_preview_exif_loading() {
 	if (!preview_exif) return;
 	preview_exif.textContent = 'EXIF-Daten werden geladen...';
+}
+
+function next_pool_image_src() {
+	if (!untiered_images) return null;
+	const poolImages = Array.from(untiered_images.querySelectorAll('img'));
+	if (poolImages.length === 0) return null;
+	const currentIdx = poolImages.findIndex((img) => img.src === preview_image?.src);
+	if (currentIdx === -1) return poolImages[0].src;
+	return poolImages[(currentIdx + 1) % poolImages.length].src;
 }
 
 function normalize_make(make) {
