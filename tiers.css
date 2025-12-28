@@ -265,6 +265,10 @@ img.draggable.dragged, .button:active {
 	min-width: 260px;
 }
 
+.preview-panel.hidden {
+	display: none;
+}
+
 .preview-frame {
 	position: sticky;
 	top: 10px;

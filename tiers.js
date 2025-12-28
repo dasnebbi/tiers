@@ -45,6 +45,7 @@ let tierlist_div;
 let dragged_image;
 let preview_image;
 let preview_placeholder;
+let preview_panel;
 
 // Used in drop() logic for placing items within a tier
 let old_item_index;
@@ -81,6 +82,7 @@ window.addEventListener('load', () => {
 	tierlist_div =  document.querySelector('.tierlist');
 	preview_image = document.getElementById('preview-image');
 	preview_placeholder = document.querySelector('.preview-placeholder');
+	preview_panel = document.querySelector('.preview-panel');
 
 	set_preview_image(null);
 
@@ -186,12 +188,14 @@ function set_preview_image(src) {
 		preview_image.src = '';
 		preview_image.style.display = 'none';
 		preview_placeholder.style.display = 'block';
+		preview_panel?.classList.add('hidden');
 		return;
 	}
 
 	preview_image.src = src;
 	preview_image.style.display = 'block';
 	preview_placeholder.style.display = 'none';
+	preview_panel?.classList.remove('hidden');
 }
 
 function clear_preview_for_dragged_image() {
