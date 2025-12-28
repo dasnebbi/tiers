@@ -96,6 +96,7 @@ window.addEventListener('load', () => {
 	recompute_header_colors();
 
 	headers_orig_min_width = all_headers[0][0].clientWidth;
+	resize_headers();
 
 	make_accept_drop(document.querySelector('.images'));
 
@@ -953,6 +954,9 @@ function add_row(index, name) {
 
 	make_accept_drop(div);
 	create_label_input(div, index, name);
+	if (headers_orig_min_width !== undefined) {
+		resize_headers();
+	}
 
 	return div;
 }
