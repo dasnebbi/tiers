@@ -7,6 +7,7 @@ body {
 	display: flex;
 	gap: 16px;
 	align-items: flex-start;
+	padding-right: 460px; /* 444px space + 16px padding for right-side avatar */
 }
 
 .title {
@@ -92,6 +93,8 @@ span.header {
 	justify-content: center;
 	align-self: stretch;
 	cursor: pointer;
+	padding-left: 16px;
+	padding-right: 16px;
 }
 
 span.header label {
