@@ -43,6 +43,8 @@ let headers_orig_min_width;
 let untiered_images;
 let tierlist_div;
 let dragged_image;
+let preview_image;
+let preview_placeholder;
 
 // Used in drop() logic for placing items within a tier
 let old_item_index;
@@ -77,6 +79,10 @@ function soft_reset_list() {
 window.addEventListener('load', () => {
 	untiered_images =  document.querySelector('.images');
 	tierlist_div =  document.querySelector('.tierlist');
+	preview_image = document.getElementById('preview-image');
+	preview_placeholder = document.querySelector('.preview-placeholder');
+
+	set_preview_image(null);
 
 	for (let i = 0; i < DEFAULT_TIERS.length; ++i) {
 		add_row(i, DEFAULT_TIERS[i]);
@@ -157,6 +163,12 @@ window.addEventListener('load', () => {
 	bind_trash_events();
 	bind_toggle_layout_events();
 
+	document.addEventListener('click', (evt) => {
+		if (!evt.target.closest('img.draggable')) {
+			set_preview_image(null);
+		}
+	});
+
 	window.addEventListener('beforeunload', (evt) => {
 		if (!unsaved_changes) return null;
 		var msg = "You have unsaved changes. Leave anyway?";
@@ -166,6 +178,27 @@ window.addEventListener('load', () => {
 
 	void try_load_tierlist_json();
 });
+
+function set_preview_image(src) {
+	if (!preview_image || !preview_placeholder) return;
+
+	if (!src) {
+		preview_image.src = '';
+		preview_image.style.display = 'none';
+		preview_placeholder.style.display = 'block';
+		return;
+	}
+
+	preview_image.src = src;
+	preview_image.style.display = 'block';
+	preview_placeholder.style.display = 'none';
+}
+
+function clear_preview_for_dragged_image() {
+	if (dragged_image && preview_image && preview_image.src === dragged_image.src) {
+		set_preview_image(null);
+	}
+}
 
 function create_img_with_src(src) {
 	let img = document.createElement('img');
@@ -180,6 +213,9 @@ function create_img_with_src(src) {
 
 	    // Grabs the index of the item's original placement prior to being dragged.
 		old_item_index = get_item_index(dragged_image)
+	});
+	img.addEventListener('click', (evt) => {
+		set_preview_image(evt.target.src);
 	});
 	return img;
 }
@@ -462,6 +498,7 @@ function make_accept_drop(elem) {
 			items_container.insertBefore(td, items_container.children[target_item_index]);
 		}
 
+		clear_preview_for_dragged_image();
 		unsaved_changes = true;
 	});
 }
@@ -685,8 +722,9 @@ function bind_trash_events() {
 			{
 				// We were already in a tier
 				let containing_tr = dragged_image_parent.parentNode;
-				containing_tr.removeChild(dragged_image_parent);
+					containing_tr.removeChild(dragged_image_parent);
 			}
+			clear_preview_for_dragged_image();
 			dragged_image.remove();
 		}
 	});
