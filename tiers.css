@@ -295,3 +295,12 @@ img.draggable.dragged, .button:active {
 	max-height: 80vh;
 	object-fit: contain;
 }
+
+.preview-exif {
+	margin-top: 8px;
+	color: #ccc;
+	font-size: 14px;
+	text-align: center;
+	line-height: 1.4;
+	white-space: pre-line;
+}

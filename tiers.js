@@ -46,6 +46,8 @@ let dragged_image;
 let preview_image;
 let preview_placeholder;
 let preview_panel;
+let preview_exif;
+let preview_exif_token = 0;
 
 // Used in drop() logic for placing items within a tier
 let old_item_index;
@@ -83,6 +85,7 @@ window.addEventListener('load', () => {
 	preview_image = document.getElementById('preview-image');
 	preview_placeholder = document.querySelector('.preview-placeholder');
 	preview_panel = document.querySelector('.preview-panel');
+	preview_exif = document.querySelector('.preview-exif');
 
 	set_preview_image(null);
 
@@ -183,12 +186,14 @@ window.addEventListener('load', () => {
 
 function set_preview_image(src) {
 	if (!preview_image || !preview_placeholder) return;
+	const token = ++preview_exif_token;
 
 	if (!src) {
 		preview_image.src = '';
 		preview_image.style.display = 'none';
 		preview_placeholder.style.display = 'block';
 		preview_panel?.classList.add('hidden');
+		clear_preview_exif();
 		return;
 	}
 
@@ -196,12 +201,234 @@ function set_preview_image(src) {
 	preview_image.style.display = 'block';
 	preview_placeholder.style.display = 'none';
 	preview_panel?.classList.remove('hidden');
+	set_preview_exif_loading();
+	update_preview_exif(src, token);
 }
 
 function clear_preview_for_dragged_image() {
 	if (dragged_image && preview_image && preview_image.src === dragged_image.src) {
 		set_preview_image(null);
 	}
+}
+
+function clear_preview_exif() {
+	if (!preview_exif) return;
+	preview_exif.textContent = '';
+}
+
+function set_preview_exif_loading() {
+	if (!preview_exif) return;
+	preview_exif.textContent = 'EXIF-Daten werden geladen...';
+}
+
+function pick_first(value) {
+	return Array.isArray(value) ? value[0] : value;
+}
+
+function rational_to_number(rat) {
+	if (!rat || rat.denominator === 0) return null;
+	return rat.numerator / rat.denominator;
+}
+
+function format_exposure_time(exposure_time, shutter_speed_value) {
+	let seconds = null;
+	if (exposure_time) {
+		seconds = rational_to_number(exposure_time);
+	} else if (shutter_speed_value) {
+		const sv = rational_to_number(shutter_speed_value);
+		if (sv !== null) {
+			seconds = Math.pow(2, -sv);
+		}
+	}
+	if (seconds === null || seconds === 0) return null;
+	if (seconds >= 1) {
+		return `${seconds.toFixed(2)}s`;
+	}
+	return `1/${Math.round(1 / seconds)}s`;
+}
+
+function format_date(date_str) {
+	if (!date_str || typeof date_str !== 'string') return null;
+	const parts = date_str.trim().split(' ')[0];
+	if (!parts) return null;
+	return parts.replace(/:/g, '-');
+}
+
+function format_exif(tags) {
+	if (!tags) return '';
+	const make = pick_first(tags[0x010F]) || '';
+	const model = pick_first(tags[0x0110]) || '';
+	const lens = pick_first(tags[0xA434]) || '';
+	const lens_make = pick_first(tags[0xA433]) || '';
+	const focal_length = rational_to_number(pick_first(tags[0x920A]));
+	const f_number = rational_to_number(pick_first(tags[0x829D]));
+	const exposure_time = pick_first(tags[0x829A]);
+	const shutter_speed_value = pick_first(tags[0x9201]);
+	const iso = pick_first(tags[0x8827]) || pick_first(tags[0x8833]);
+	const date_original = pick_first(tags[0x9003]);
+
+	const camera_desc = [make, model].filter(Boolean).join(' ').trim();
+	const lens_desc = lens || lens_make;
+	const line1 = [camera_desc, lens_desc].filter(Boolean).join(' + ');
+
+	const pieces_line2 = [];
+	if (focal_length) pieces_line2.push(`${focal_length.toFixed(0)}mm`);
+	if (f_number) pieces_line2.push(`f/${f_number.toFixed(1)}`);
+	const exposure_str = format_exposure_time(exposure_time, shutter_speed_value);
+	if (exposure_str) pieces_line2.push(exposure_str);
+	if (iso) pieces_line2.push(`ISO ${iso}`);
+	const line2 = pieces_line2.join(', ');
+
+	const line3 = format_date(date_original);
+
+	return [line1, line2, line3].filter(Boolean).join('\n');
+}
+
+function read_ascii(view, start, count) {
+	let out = '';
+	for (let i = 0; i < count - 1; i++) {
+		out += String.fromCharCode(view.getUint8(start + i));
+	}
+	return out.trim();
+}
+
+function read_rational(view, start, littleEndian, signed = false) {
+	const numerator = signed ? view.getInt32(start, littleEndian) : view.getUint32(start, littleEndian);
+	const denominator = signed ? view.getInt32(start + 4, littleEndian) : view.getUint32(start + 4, littleEndian);
+	return { numerator, denominator };
+}
+
+function get_tag_value(view, tiff_start, entry_offset, type, count, value_offset, littleEndian) {
+	const type_sizes = { 1: 1, 2: 1, 3: 2, 4: 4, 5: 8, 7: 1, 10: 8 };
+	const size = type_sizes[type];
+	if (!size) return null;
+	let value_ptr;
+	if (count * size <= 4) {
+		value_ptr = entry_offset + 8;
+	} else {
+		value_ptr = tiff_start + value_offset;
+	}
+
+	const read_value = (offset) => {
+		switch (type) {
+			case 1:
+			case 7:
+				return view.getUint8(offset);
+			case 2:
+				return read_ascii(view, offset, count);
+			case 3:
+				return view.getUint16(offset, littleEndian);
+			case 4:
+				return view.getUint32(offset, littleEndian);
+			case 5:
+				return read_rational(view, offset, littleEndian, false);
+			case 10:
+				return read_rational(view, offset, littleEndian, true);
+			default:
+				return null;
+		}
+	};
+
+	if (type === 2) {
+		return read_value(value_ptr);
+	}
+
+	if (count === 1) {
+		return read_value(value_ptr);
+	}
+	const values = [];
+	for (let i = 0; i < count; i++) {
+		values.push(read_value(value_ptr + i * size));
+	}
+	return values;
+}
+
+function parse_ifd(view, tiff_start, offset, littleEndian, tags) {
+	const entries = view.getUint16(tiff_start + offset, littleEndian);
+	for (let i = 0; i < entries; i++) {
+		const entry_offset = tiff_start + offset + 2 + i * 12;
+		const tag = view.getUint16(entry_offset, littleEndian);
+		const type = view.getUint16(entry_offset + 2, littleEndian);
+		const count = view.getUint32(entry_offset + 4, littleEndian);
+		const value_offset = view.getUint32(entry_offset + 8, littleEndian);
+		tags[tag] = get_tag_value(view, tiff_start, entry_offset, type, count, value_offset, littleEndian);
+	}
+}
+
+function parse_exif_from_buffer(data) {
+	const view = new DataView(data.buffer);
+	if (view.getUint16(0) !== 0xFFD8) {
+		throw new Error('Not a JPEG');
+	}
+	let offset = 2;
+	while (offset < view.byteLength) {
+		if (view.getUint8(offset) !== 0xFF) break;
+		const marker = view.getUint8(offset + 1);
+		const size = view.getUint16(offset + 2);
+		if (marker === 0xE1) {
+			const start = offset + 4;
+			const header = String.fromCharCode(
+				view.getUint8(start),
+				view.getUint8(start + 1),
+				view.getUint8(start + 2),
+				view.getUint8(start + 3),
+				view.getUint8(start + 4),
+				view.getUint8(start + 5)
+			);
+			if (header === 'Exif\0\0') {
+				const tiff_start = start + 6;
+				const littleEndian = view.getUint16(tiff_start) === 0x4949;
+				const first_ifd_offset = view.getUint32(tiff_start + 4, littleEndian);
+				const tags = {};
+				parse_ifd(view, tiff_start, first_ifd_offset, littleEndian, tags);
+				const exif_sub_ifd_offset = tags[0x8769];
+				if (typeof exif_sub_ifd_offset === 'number') {
+					parse_ifd(view, tiff_start, exif_sub_ifd_offset, littleEndian, tags);
+				}
+				return tags;
+			}
+		}
+		offset += 2 + size;
+	}
+	throw new Error('No EXIF data');
+}
+
+function data_url_to_uint8(src) {
+	const base64 = src.split(',')[1];
+	const binary = atob(base64);
+	const len = binary.length;
+	const bytes = new Uint8Array(len);
+	for (let i = 0; i < len; i++) {
+		bytes[i] = binary.charCodeAt(i);
+	}
+	return bytes;
+}
+
+async function extract_exif_from_src(src) {
+	try {
+		let data;
+		if (src.startsWith('data:')) {
+			data = data_url_to_uint8(src);
+		} else {
+			const resp = await fetch(src);
+			const buf = await resp.arrayBuffer();
+			data = new Uint8Array(buf);
+		}
+		return parse_exif_from_buffer(data);
+	} catch (_e) {
+		return null;
+	}
+}
+function update_preview_exif(src, token) {
+	if (!preview_exif) return;
+	extract_exif_from_src(src).then((tags) => {
+		if (token !== preview_exif_token) return;
+		const formatted = format_exif(tags);
+		preview_exif.textContent = formatted || 'Keine EXIF-Daten vorhanden.';
+	}).catch(() => {
+		if (token !== preview_exif_token) return;
+		preview_exif.textContent = 'Keine EXIF-Daten vorhanden.';
+	});
 }
 
 function create_img_with_src(src) {
