@@ -15,7 +15,7 @@
 'use strict';
 
 const MAX_NAME_LEN = 200;
-const DEFAULT_TIERS = ['S','A','B','C','D','E','F'];
+const DEFAULT_TIERS = ['Meisterwerk','Wow','Stark','Joa.','Schnappschuss','Missraten'];
 const TIER_COLORS = [
 	// from S to F
 	'#ff6666',
