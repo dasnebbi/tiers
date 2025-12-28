@@ -43,6 +43,8 @@ let headers_orig_min_width;
 let untiered_images;
 let tierlist_div;
 let dragged_image;
+let preview_image;
+let preview_placeholder;
 
 // Used in drop() logic for placing items within a tier
 let old_item_index;
@@ -77,6 +79,10 @@ function soft_reset_list() {
 window.addEventListener('load', () => {
 	untiered_images =  document.querySelector('.images');
 	tierlist_div =  document.querySelector('.tierlist');
+	preview_image = document.getElementById('preview-image');
+	preview_placeholder = document.querySelector('.preview-placeholder');
+
+	set_preview_image(null);
 
 	for (let i = 0; i < DEFAULT_TIERS.length; ++i) {
 		add_row(i, DEFAULT_TIERS[i]);
@@ -167,6 +173,21 @@ window.addEventListener('load', () => {
 	void try_load_tierlist_json();
 });
 
+function set_preview_image(src) {
+	if (!preview_image || !preview_placeholder) return;
+
+	if (!src) {
+		preview_image.src = '';
+		preview_image.style.display = 'none';
+		preview_placeholder.style.display = 'block';
+		return;
+	}
+
+	preview_image.src = src;
+	preview_image.style.display = 'block';
+	preview_placeholder.style.display = 'none';
+}
+
 function create_img_with_src(src) {
 	let img = document.createElement('img');
 	img.src = src;
@@ -180,6 +201,9 @@ function create_img_with_src(src) {
 
 	    // Grabs the index of the item's original placement prior to being dragged.
 		old_item_index = get_item_index(dragged_image)
+	});
+	img.addEventListener('click', (evt) => {
+		set_preview_image(evt.target.src);
 	});
 	return img;
 }

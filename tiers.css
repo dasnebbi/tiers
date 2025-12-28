@@ -3,6 +3,12 @@ body {
 	font-family: sans-serif;
 }
 
+.app-layout {
+	display: flex;
+	gap: 16px;
+	align-items: flex-start;
+}
+
 .title {
 	color: #ddd;
 	font-size: 38px;
@@ -32,6 +38,8 @@ body {
 .main-content {
 	display: flex;
 	flex-flow: column;
+	flex: 1 1 50%;
+	min-width: 320px;
 }
 
 .main-content.vertical {
@@ -248,4 +256,37 @@ img.draggable.dragged, .button:active {
   	height: 100px;
   	position: absolute;
   	top: 0;
+}
+
+.preview-panel {
+	flex: 0 1 50%;
+	max-width: 50vw;
+	min-width: 260px;
+}
+
+.preview-frame {
+	position: sticky;
+	top: 10px;
+	background: #222;
+	border: 1px solid #666;
+	border-radius: 4px;
+	padding: 10px;
+	min-height: 200px;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+}
+
+.preview-placeholder {
+	margin: 0;
+	color: #aaa;
+	text-align: center;
+}
+
+#preview-image {
+	display: none;
+	width: 100%;
+	height: auto;
+	max-height: 80vh;
+	object-fit: contain;
 }
