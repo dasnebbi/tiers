@@ -298,9 +298,9 @@ img.draggable.dragged, .button:active {
 }
 
 .preview-exif {
-	margin-top: 8px;
+	margin-top: 1.5em;
 	color: #ccc;
-	font-size: 14px;
+	font-size: 16px;
 	text-align: center;
 	line-height: 1.4;
 	white-space: pre-line;

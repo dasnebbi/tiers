@@ -221,6 +221,17 @@ function set_preview_exif_loading() {
 	preview_exif.textContent = 'EXIF-Daten werden geladen...';
 }
 
+function normalize_make(make) {
+	if (!make || typeof make !== 'string') return '';
+	let cleaned = make.replace(/corporation/ig, '')
+		.replace(/inc\.?/ig, '')
+		.replace(/co\.,?\s*ltd\.?/ig, '')
+		.replace(/co\.?/ig, '');
+	cleaned = cleaned.trim().toLowerCase();
+	if (!cleaned) return '';
+	return cleaned.charAt(0).toUpperCase() + cleaned.slice(1);
+}
+
 function pick_first(value) {
 	return Array.isArray(value) ? value[0] : value;
 }
@@ -256,10 +267,10 @@ function format_date(date_str) {
 
 function format_exif(tags) {
 	if (!tags) return '';
-	const make = pick_first(tags[0x010F]) || '';
+	const make = normalize_make(pick_first(tags[0x010F])) || '';
 	const model = pick_first(tags[0x0110]) || '';
 	const lens = pick_first(tags[0xA434]) || '';
-	const lens_make = pick_first(tags[0xA433]) || '';
+	const lens_make = normalize_make(pick_first(tags[0xA433])) || '';
 	const focal_length = rational_to_number(pick_first(tags[0x920A]));
 	const f_number = rational_to_number(pick_first(tags[0x829D]));
 	const exposure_time = pick_first(tags[0x829A]);
