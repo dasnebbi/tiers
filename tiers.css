@@ -92,8 +92,6 @@ span.header {
 	justify-content: center;
 	align-self: stretch;
 	cursor: pointer;
-	padding-left: 16px;
-	padding-right: 16px;
 }
 
 span.header label {
