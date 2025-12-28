@@ -871,13 +871,19 @@ function create_label_input(row, row_idx, row_name) {
 }
 
 function resize_headers() {
-	let max_width = headers_orig_min_width;
-	for (let [other_header, _i, label] of all_headers) {
-		max_width = Math.max(max_width, label.clientWidth);
+	let max_label_width = headers_orig_min_width;
+	for (let [_header, _i, label] of all_headers) {
+		max_label_width = Math.max(max_label_width, label.scrollWidth);
 	}
-
+	const paddingTotal = (() => {
+		if (!all_headers.length) return 0;
+		const style = getComputedStyle(all_headers[0][0]);
+		return parseFloat(style.paddingLeft || '0') + parseFloat(style.paddingRight || '0');
+	})();
+	const targetWidth = max_label_width + paddingTotal;
 	for (let [other_header, _i2, _l2] of all_headers) {
-		other_header.style.minWidth = `${max_width}px`;
+		other_header.style.width = `${targetWidth}px`;
+		other_header.style.minWidth = `${targetWidth}px`;
 	}
 }
 
