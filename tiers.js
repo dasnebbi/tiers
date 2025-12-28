@@ -89,6 +89,14 @@ window.addEventListener('load', () => {
 
 	set_preview_image(null);
 
+	if (preview_image) {
+		preview_image.addEventListener('click', (evt) => {
+			if (!preview_image.src) return;
+			evt.stopPropagation();
+			window.open(preview_image.src, '_blank');
+		});
+	}
+
 	for (let i = 0; i < DEFAULT_TIERS.length; ++i) {
 		add_row(i, DEFAULT_TIERS[i]);
 	}
@@ -163,12 +171,15 @@ window.addEventListener('load', () => {
 			load_tierlist(parsed);
 		});
 		reader.readAsText(file);
-	});
+		});
 
 	bind_trash_events();
 	bind_toggle_layout_events();
 
 	document.addEventListener('click', (evt) => {
+		if (evt.target.closest('.preview-panel')) {
+			return;
+		}
 		if (!evt.target.closest('img.draggable')) {
 			set_preview_image(null);
 		}
@@ -232,6 +243,16 @@ function normalize_make(make) {
 	return cleaned.charAt(0).toUpperCase() + cleaned.slice(1);
 }
 
+function normalize_model(model, make) {
+	if (!model || typeof model !== 'string') return '';
+	let cleaned = model.trim();
+	if (make) {
+		const prefix = new RegExp(`^${make}\\s+`, 'i');
+		cleaned = cleaned.replace(prefix, '').trim();
+	}
+	return cleaned;
+}
+
 function pick_first(value) {
 	return Array.isArray(value) ? value[0] : value;
 }
@@ -268,7 +289,8 @@ function format_date(date_str) {
 function format_exif(tags) {
 	if (!tags) return '';
 	const make = normalize_make(pick_first(tags[0x010F])) || '';
-	const model = pick_first(tags[0x0110]) || '';
+	const model_raw = pick_first(tags[0x0110]) || '';
+	const model = normalize_model(model_raw, make);
 	const lens = pick_first(tags[0xA434]) || '';
 	const lens_make = normalize_make(pick_first(tags[0xA433])) || '';
 	const focal_length = rational_to_number(pick_first(tags[0x920A]));
