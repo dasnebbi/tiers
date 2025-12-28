@@ -48,6 +48,7 @@ let preview_placeholder;
 let preview_panel;
 let preview_exif;
 let preview_exif_token = 0;
+const preview_exif_cache = new Map();
 
 // Used in drop() logic for placing items within a tier
 let old_item_index;
@@ -88,14 +89,6 @@ window.addEventListener('load', () => {
 	preview_exif = document.querySelector('.preview-exif');
 
 	set_preview_image(null);
-
-	if (preview_image) {
-		preview_image.addEventListener('click', (evt) => {
-			if (!preview_image.src) return;
-			evt.stopPropagation();
-			open_preview_in_new_tab(preview_image.src);
-		});
-	}
 
 	for (let i = 0; i < DEFAULT_TIERS.length; ++i) {
 		add_row(i, DEFAULT_TIERS[i]);
@@ -212,6 +205,13 @@ function set_preview_image(src) {
 	preview_image.style.display = 'block';
 	preview_placeholder.style.display = 'none';
 	preview_panel?.classList.remove('hidden');
+	const cached = preview_exif_cache.get(src);
+	if (cached !== undefined) {
+		if (preview_exif) {
+			preview_exif.textContent = cached;
+		}
+		return;
+	}
 	set_preview_exif_loading();
 	update_preview_exif(src, token);
 }
@@ -230,15 +230,6 @@ function clear_preview_exif() {
 function set_preview_exif_loading() {
 	if (!preview_exif) return;
 	preview_exif.textContent = 'EXIF-Daten werden geladen...';
-}
-
-function open_preview_in_new_tab(src) {
-	if (!src) return;
-	const link = document.createElement('a');
-	link.href = src;
-	link.target = '_blank';
-	link.rel = 'noopener';
-	link.click();
 }
 
 function normalize_make(make) {
@@ -466,10 +457,14 @@ function update_preview_exif(src, token) {
 	extract_exif_from_src(src).then((tags) => {
 		if (token !== preview_exif_token) return;
 		const formatted = format_exif(tags);
-		preview_exif.textContent = formatted || 'Keine EXIF-Daten vorhanden.';
+		const text = formatted || 'Keine EXIF-Daten vorhanden.';
+		preview_exif_cache.set(src, text);
+		preview_exif.textContent = text;
 	}).catch(() => {
 		if (token !== preview_exif_token) return;
-		preview_exif.textContent = 'Keine EXIF-Daten vorhanden.';
+		const text = 'Keine EXIF-Daten vorhanden.';
+		preview_exif_cache.set(src, text);
+		preview_exif.textContent = text;
 	});
 }
 
